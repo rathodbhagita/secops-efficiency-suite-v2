@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google SecOps AI Efficiency Suite V2 — Threat Intel Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-dark: #1e293b;
+      --panel-border: #334155;
+      --cyan-accent: #06b6d4;
+      --cyan-glow: rgba(6, 182, 212, 0.2);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --user-bubble: #0284c7;
+      --assistant-bubble: #1e293b;
+      --red-alert: #ef4444;
+      --yellow-alert: #f59e0b;
+      --green-alert: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top Navbar */
+    header {
+      background-color: var(--panel-dark);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 0.65rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #06b6d4, #2563eb);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #ffffff;
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    .brand-text h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #ffffff, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Top Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.4rem;
+      background-color: #0b1329;
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      background-color: var(--cyan-accent);
+      color: #0f172a;
+      box-shadow: 0 0 10px var(--cyan-glow);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: rgba(6, 182, 212, 0.1);
+      border: 1px solid var(--cyan-accent);
+      color: var(--cyan-accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #22c55e;
+    }
+
+    /* Tab Content Views Container */
+    .view-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      padding: 1.25rem 1.75rem;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* CHAT ASSISTANT TAB */
+    .chat-layout {
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .message-row { display: flex; gap: 0.85rem; max-width: 85%; }
+    .message-row.user-row { align-self: flex-end; flex-direction: row-reverse; }
+
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+      border: 1px solid var(--panel-border);
+    }
+    .user-row .avatar { background: var(--user-bubble); color: #fff; }
+    .assistant-row .avatar { background: linear-gradient(135deg, #06b6d4, #0f172a); color: #fff; border-color: var(--cyan-accent); }
+
+    .speech-bubble {
+      background-color: var(--assistant-bubble);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px; padding: 1.1rem; line-height: 1.6; font-size: 0.95rem;
+    }
+    .user-row .speech-bubble { background-color: #0369a1; border-color: #0284c7; }
+
+    .bottom-controls { display: flex; flex-direction: column; gap: 0.75rem; padding-top: 0.75rem; }
+    .chips-bar { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.25rem; }
+
+    .action-chip {
+      background-color: var(--panel-dark); border: 1px solid var(--panel-border);
+      color: var(--text-primary); font-size: 0.825rem; padding: 0.5rem 1rem;
+      border-radius: 9999px; cursor: pointer; white-space: nowrap; transition: all 0.2s;
+    }
+    .action-chip:hover { border-color: var(--cyan-accent); box-shadow: 0 0 10px var(--cyan-glow); }
+
+    .input-form {
+      display: flex; gap: 0.75rem; background-color: var(--panel-dark);
+      border: 1px solid var(--panel-border); border-radius: 12px; padding: 0.5rem 0.75rem 0.5rem 1rem;
+    }
+    .chat-input { flex: 1; background: transparent; border: none; color: var(--text-primary); font-size: 0.95rem; outline: none; }
+    .send-btn { background: linear-gradient(135deg, #06b6d4, #0284c7); color: #fff; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; font-weight: 600; cursor: pointer; }
+
+    /* DASHBOARD TABLES & CARDS */
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+    .dashboard-title { font-size: 1.2rem; font-weight: 700; }
+    .refresh-badge { font-size: 0.8rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+
+    .data-table {
+      width: 100%; border-collapse: collapse; background-color: var(--panel-dark);
+      border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden;
+    }
+    .data-table th, .data-table td { padding: 0.85rem 1rem; text-align: left; border-bottom: 1px solid var(--panel-border); font-size: 0.875rem; }
+    .data-table th { background-color: #0b1329; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+    .data-table tr:hover { background-color: rgba(255, 255, 255, 0.02); }
+
+    .pill { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.725rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .pill-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #ef4444; }
+    .pill-yellow { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid #f59e0b; }
+    .pill-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid #10b981; }
+    .pill-cyan { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid #06b6d4; }
+    .pill-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid #a855f7; }
+
+    .epss-bar-container { width: 100px; background-color: #090d16; border-radius: 9999px; height: 8px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 0.4rem; }
+    .epss-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #06b6d4, #ef4444); }
+
+    /* THREAT INTEL TWO-CARD LAYOUT */
+    .intel-cards-grid { display: flex; flex-direction: column; gap: 1.5rem; }
+    .intel-card { background-color: var(--panel-dark); border: 1px solid var(--panel-border); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+    .intel-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 0.75rem; }
+    .intel-card-title { font-size: 1.05rem; font-weight: 700; color: var(--cyan-accent); display: flex; align-items: center; gap: 0.5rem; }
+
+    .advisory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+    .advisory-item { background-color: #0b1329; border: 1px solid var(--panel-border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem; }
+    .advisory-title { font-size: 0.95rem; font-weight: 600; color: #f8fafc; line-height: 1.4; }
+    .advisory-summary { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; }
+
+    .advisory-link-btn {
+      color: var(--cyan-accent); font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; transition: color 0.2s;
+    }
+    .advisory-link-btn:hover { color: #38bdf8; text-decoration: underline; }
+
+    /* MODAL OVERLAY */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); z-index: 999; justify-content: center; align-items: center;
+    }
+    .modal-card {
+      background-color: var(--panel-dark); border: 1px solid var(--cyan-accent); border-radius: 12px; width: 90%; max-width: 600px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 0 24px var(--cyan-glow);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 0.75rem; }
+    .modal-close { background: transparent; border: none; color: var(--text-secondary); font-size: 1.25rem; cursor: pointer; }
+    .modal-close:hover { color: #ef4444; }
+
+    .text-cyan-400 { color: #38bdf8; font-size: 0.875rem; font-weight: 600; text-decoration: none; }
+    .hover\:underline:hover, .hover-underline:hover { text-decoration: underline; }
+    .cursor-pointer { cursor: pointer; }
+    .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+    .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+    .text-xs { font-size: 0.75rem; }
+    .bg-slate-800 { background-color: #1e293b; }
+    .hover\:bg-slate-700:hover { background-color: #334155; }
+    .text-slate-200 { color: #e2e8f0; }
+    .rounded { border-radius: 0.25rem; }
+    .border { border-width: 1px; border-style: solid; }
+    .border-slate-600 { border-color: #475569; }
+
+    .typing-indicator { display: flex; gap: 6px; padding: 0.5rem; }
+    .dot { width: 8px; height: 8px; background: var(--cyan-accent); border-radius: 50%; animation: pulse 1.4s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.6); } 40% { opacity: 1; transform: scale(1); } }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">AI</div>
+      <div class="brand-text">
+        <h1>Google SecOps AI Efficiency Suite V2</h1>
+        <p>Live Threat Intel & Daily Disclosed CVE Aggregator</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('chat')">💬 Chat Assistant</button>
+      <button class="tab-btn" onclick="switchTab('alerts')">🚨 Alerts Feed</button>
+      <button class="tab-btn" onclick="switchTab('detections')">⚙️ Detection Rules</button>
+      <button class="tab-btn" onclick="switchTab('vulnerabilities')">🛡️ Vulnerability Assets</button>
+      <button class="tab-btn" onclick="switchTab('telemetry')">📡 Live UDM Telemetry</button>
+      <button class="tab-btn" onclick="switchTab('intel')">📰 Threat Intel & Daily CVEs</button>
+    </nav>
+
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      gemini-3.8-flash
+    </div>
+  </header>
+
+  <div class="view-container">
+    
+    <!-- 1. CHAT ASSISTANT TAB -->
+    <div id="tab-chat" class="tab-content active">
+      <div class="chat-layout">
+        <div class="chat-feed" id="chat-feed">
+          <div class="message-row assistant-row">
+            <div class="avatar">AI</div>
+            <div class="speech-bubble">
+              <h3>Welcome to Google SecOps AI Console V2</h3>
+              <p>All V2 security tools are online: Threat Intel & CVE feeds, Live EPSS scoring, UDM correlation, and SOAR failure diagnostics.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-controls">
+          <div class="chips-bar">
+            <button class="action-chip" onclick="executeChip('What are today\'s top trending CVEs and affected software?')">
+              📰 Top Trending CVEs & Software Impact
+            </button>
+            <button class="action-chip" onclick="executeChip('Summarize the latest security advisories from Hacker News and GBHackers')">
+              📢 Summarize Latest Threat News & Advisories
+            </button>
+            <button class="action-chip" onclick="executeChip('Prioritize SCC Vulnerabilities (Live EPSS)')">
+              🛡️ Prioritize SCC Vulnerabilities (Live EPSS)
+            </button>
+          </div>
+          <form class="input-form" onsubmit="handleChatSubmit(event)">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Type natural language query or security prompt..." autocomplete="off" />
+            <button type="submit" class="send-btn">Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. ALERTS FEED TAB -->
+    <div id="tab-alerts" class="tab-content">
+      <div class="dashboard-header">
+        <div class="dashboard-title">🚨 Active Security Alerts & Pre-Merge Candidates</div>
+        <div class="refresh-badge">Auto-refreshing (10s)</div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Alert ID</th>
+            <th>Alert Name</th>
+            <th>Priority</th>
+            <th>Source IP</th>
+            <th>Target Host</th>
+            <th>Target User</th>
+            <th>Pre-Merge Action</th>
+          </tr>
+        </thead>
+        <tbody id="alerts-table-body">
+          <tr><td colspan="7">Loading active alerts...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3. DETECTION RULES TAB -->
+    <div id="tab-detections" class="tab-content">
+      <div class="dashboard-header">
+        <div class="dashboard-title">⚙️ YARA-L Detection Rules & Noise Tuning (RCA)</div>
+        <div class="refresh-badge">Detection RCA Engine Active</div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Rule ID</th>
+            <th>Rule Description</th>
+            <th>Alert Spike (24h)</th>
+            <th>Noise Ratio</th>
+            <th>Top Offending Source IP</th>
+            <th>Top User</th>
+            <th>Tuning Status & Recommendation</th>
+          </tr>
+        </thead>
+        <tbody id="detections-table-body">
+          <tr><td colspan="7">Loading detection tuning rules...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 4. VULNERABILITY ASSETS TAB -->
+    <div id="tab-vulnerabilities" class="tab-content">
+      <div class="dashboard-header">
+        <div class="dashboard-title">🛡️ Asset Vulnerabilities (Live 2026 CVE & EPSS Risk Scoring)</div>
+        <div class="refresh-badge" style="border-color:#06b6d4; color:#38bdf8;">⚡ Live 2026 CISA KEV & EPSS Risk Scoring</div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>CVE ID</th>
+            <th>Vulnerability Title</th>
+            <th>Asset ID</th>
+            <th>CVSS Base</th>
+            <th>Live EPSS Prob (Percentile)</th>
+            <th>Internet Exposed</th>
+            <th>Asset Criticality</th>
+            <th>Composite Risk Score</th>
+          </tr>
+        </thead>
+        <tbody id="vulnerabilities-table-body">
+          <tr><td colspan="8">Fetching live EPSS scores from api.first.org...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 5. LIVE UDM TELEMETRY TAB -->
+    <div id="tab-telemetry" class="tab-content">
+      <div class="dashboard-header">
+        <div class="dashboard-title">📡 Continuous Live UDM Telemetry Event Stream</div>
+        <div class="refresh-badge" id="telemetry-refresh-badge">Live Stream Active (Auto-updating)</div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Event Type</th>
+            <th>Principal Host / IP</th>
+            <th>Principal User</th>
+            <th>Target Host / Resource</th>
+            <th>Protocol / Direction</th>
+            <th>Security Result</th>
+          </tr>
+        </thead>
+        <tbody id="telemetry-table-body">
+          <tr><td colspan="7">Streaming live UDM telemetry events...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 6. THREAT INTEL & DAILY CVES TAB -->
+    <div id="tab-intel" class="tab-content">
+      <div class="dashboard-header">
+        <div class="dashboard-title">📰 Live Threat Intelligence & Daily Disclosed CVEs</div>
+        <div class="refresh-badge" id="intel-refresh-badge">Auto-refreshing (15s)</div>
+      </div>
+
+      <div class="intel-cards-grid">
+        <!-- Card A: Daily Disclosed CVEs & Software Impact -->
+        <div class="intel-card">
+          <div class="intel-card-header">
+            <div class="intel-card-title">🔥 Card A: Daily Disclosed CVEs & Software Impact (CISA KEV)</div>
+            <span class="pill pill-red">CRITICAL EXPLOITS IN WILD</span>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>CVE ID</th>
+                <th>Vendor / Project</th>
+                <th>Affected Software / Vulnerability</th>
+                <th>CVSS Score</th>
+                <th>Exploit Status</th>
+                <th>Date Disclosed</th>
+                <th>Required Remediation Action</th>
+              </tr>
+            </thead>
+            <tbody id="cve-table-body">
+              <tr><td colspan="7">Loading daily disclosed CVEs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Card B: Live Security Advisories & News Trends -->
+        <div class="intel-card">
+          <div class="intel-card-header">
+            <div class="intel-card-title">📢 Card B: Live Security Advisories & News Trends</div>
+            <span class="pill pill-cyan">Sources: CISA / GBHackers / THN</span>
+          </div>
+          <div class="advisory-grid" id="advisory-grid-container">
+            <div>Loading live threat advisories...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Advisory Detail Modal -->
+  <div class="modal-overlay" id="advisory-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title" style="font-size:1.1rem; color:#06b6d4;">Advisory Details</h3>
+        <button class="modal-close" onclick="closeAdvisoryModal()">✖</button>
+      </div>
+      <div>
+        <span class="pill pill-cyan" id="modal-source">CISA</span>
+        <span class="pill pill-purple" id="modal-category">EMERGENCY_DIRECTIVE</span>
+      </div>
+      <p id="modal-summary" style="font-size:0.95rem; line-height:1.6; color:#f8fafc;"></p>
+      <div style="background:#0b1329; border:1px solid #334155; padding:1rem; border-radius:8px;">
+        <strong style="color:#38bdf8; font-size:0.85rem; text-transform:uppercase;">Recommended Mitigation Steps:</strong>
+        <p id="modal-mitigation" style="font-size:0.9rem; color:#94a3b8; margin-top:0.4rem;"></p>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:1rem;">
+        <button class="action-chip" onclick="closeAdvisoryModal()">Close</button>
+        <a id="modal-external-link" href="#" target="_blank" rel="noopener noreferrer" class="send-btn" style="text-decoration:none; display:inline-block;">
+          Open Original Source Article ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeTab = 'chat';
+    let cachedAdvisories = [];
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+      event.target.classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+
+      if (tabName === 'alerts') fetchAlertsDashboard();
+      if (tabName === 'detections') fetchDetectionsDashboard();
+      if (tabName === 'vulnerabilities') fetchVulnerabilitiesDashboard();
+      if (tabName === 'telemetry') fetchTelemetryDashboard();
+      if (tabName === 'intel') fetchThreatIntelDashboard();
+    }
+
+    // --- CHAT ASSISTANT LOGIC ---
+    function executeChip(promptText) {
+      document.getElementById('chat-input').value = promptText;
+      handleChatSubmit(new Event('submit'));
+    }
+
+    async function handleChatSubmit(event) {
+      event.preventDefault();
+      const inputEl = document.getElementById('chat-input');
+      const query = inputEl.value.trim();
+      if (!query) return;
+
+      appendMessage('user', query);
+      inputEl.value = '';
+
+      const typingId = appendTypingIndicator();
+
+      try {
+        const resp = await fetch('/api/v2/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: query })
+        });
+
+        const data = await resp.json();
+        removeElement(typingId);
+
+        let formattedText = data.result;
+        try {
+          const parsedJson = JSON.parse(data.result);
+          formattedText = '```json\n' + JSON.stringify(parsedJson, null, 2) + '\n```';
+        } catch(e) {}
+
+        appendMessage('assistant', formattedText);
+      } catch (err) {
+        removeElement(typingId);
+        appendMessage('assistant', `⚠️ **Error communicating with SecOps V2 Agent:** ${err.message}`);
+      }
+    }
+
+    function appendMessage(sender, text) {
+      const feed = document.getElementById('chat-feed');
+      const row = document.createElement('div');
+      row.className = `message-row ${sender}-row`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = sender === 'user' ? 'YOU' : 'AI';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'speech-bubble';
+      bubble.innerHTML = typeof marked !== 'undefined' ? marked.parse(text) : text;
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      feed.appendChild(row);
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    function appendTypingIndicator() {
+      const id = 'typing-' + Date.now();
+      const feed = document.getElementById('chat-feed');
+      const row = document.createElement('div');
+      row.className = 'message-row assistant-row';
+      row.id = id;
+      row.innerHTML = `<div class="avatar">AI</div><div class="speech-bubble"><div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+      feed.appendChild(row);
+      feed.scrollTop = feed.scrollHeight;
+      return id;
+    }
+
+    function removeElement(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    // --- DASHBOARD API FETCHERS ---
+    async function fetchAlertsDashboard() {
+      try {
+        const resp = await fetch('/api/v2/dashboard/alerts');
+        const data = await resp.json();
+        const tbody = document.getElementById('alerts-table-body');
+        tbody.innerHTML = '';
+
+        data.alerts.forEach(a => {
+          const tr = document.createElement('tr');
+          const prioPill = a.priority === 'HIGH' ? '<span class="pill pill-red">HIGH</span>' : '<span class="pill pill-yellow">MEDIUM</span>';
+          const mergePill = a.premerge_candidacy 
+            ? `<button class="action-chip" style="font-size:0.75rem;" onclick="switchTab('chat'); executeChip('Correlate UDM Incidents for ${a.alert_id}')">🔗 Pre-Merge into ${a.recommended_parent}</button>`
+            : '<span class="pill pill-cyan">PRIMARY PARENT</span>';
+
+          tr.innerHTML = `
+            <td><code>${a.alert_id}</code></td>
+            <td><strong>${a.alert_name}</strong></td>
+            <td>${prioPill}</td>
+            <td><code>${a.source_ip}</code></td>
+            <td><code>${a.target_host}</code></td>
+            <td><code>${a.target_user}</code></td>
+            <td>${mergePill}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch(e) { console.error('Error fetching alerts:', e); }
+    }
+
+    async function fetchDetectionsDashboard() {
+      try {
+        const resp = await fetch('/api/v2/dashboard/detections');
+        const data = await resp.json();
+        const tbody = document.getElementById('detections-table-body');
+        tbody.innerHTML = '';
+
+        data.detections.forEach(d => {
+          const tr = document.createElement('tr');
+          const recText = d.recommended_yara_rule 
+            ? `<span class="pill pill-green">RCA Complete</span> Recommended exclusion rule <code>${d.recommended_yara_rule}</code>`
+            : '<span class="pill pill-yellow">Investigating</span> Active kill-chain alert';
+
+          tr.innerHTML = `
+            <td><code>${d.rule_id}</code></td>
+            <td><strong>${d.rule_name}</strong></td>
+            <td><code>${d.alert_spike_count_24h}</code> alerts</td>
+            <td><span class="pill pill-red">${d.noise_ratio}</span></td>
+            <td><code>${d.top_offender_ip}</code></td>
+            <td><code>${d.top_user}</code></td>
+            <td>${recText}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch(e) { console.error('Error fetching detections:', e); }
+    }
+
+    async function fetchVulnerabilitiesDashboard() {
+      try {
+        const resp = await fetch('/api/v2/dashboard/vulnerabilities');
+        const data = await resp.json();
+        const tbody = document.getElementById('vulnerabilities-table-body');
+        tbody.innerHTML = '';
+
+        data.vulnerabilities.forEach(v => {
+          const tr = document.createElement('tr');
+          const epssPct = (v.epss_probability * 100).toFixed(1);
+          const barWidth = Math.min(100, Math.max(10, epssPct));
+          const expPill = v.internet_exposed ? '<span class="pill pill-red">EXPOSED</span>' : '<span class="pill pill-green">INTERNAL</span>';
+
+          tr.innerHTML = `
+            <td><code>${v.cve_id}</code></td>
+            <td><strong>${v.title}</strong></td>
+            <td><code>${v.asset_id}</code></td>
+            <td><code>${v.cvss_score}</code></td>
+            <td>
+              <div class="epss-bar-container"><div class="epss-bar-fill" style="width:${barWidth}%;"></div></div>
+              <code>${v.epss_probability} (${(v.epss_percentile * 100).toFixed(1)}%)</code>
+            </td>
+            <td>${expPill}</td>
+            <td><span class="pill pill-cyan">${v.asset_criticality}</span></td>
+            <td><strong style="color:${v.composite_risk_score > 25 ? '#ef4444' : '#f59e0b'};">${v.composite_risk_score}</strong></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch(e) { console.error('Error fetching vulnerabilities:', e); }
+    }
+
+    async function fetchTelemetryDashboard() {
+      try {
+        const resp = await fetch('/api/v2/dashboard/telemetry');
+        const data = await resp.json();
+        const tbody = document.getElementById('telemetry-table-body');
+        tbody.innerHTML = '';
+
+        document.getElementById('telemetry-refresh-badge').textContent = `Live Stream (${data.total_events} UDM Events Buffer)`;
+
+        data.telemetry_stream.forEach(ev => {
+          const tr = document.createElement('tr');
+          const secAction = ev.security_result?.action || 'ALLOW';
+          const secPill = secAction === 'BLOCK' 
+            ? '<span class="pill pill-red">BLOCK</span>' 
+            : (secAction === 'AUDIT' ? '<span class="pill pill-yellow">AUDIT</span>' : '<span class="pill pill-green">ALLOW</span>');
+
+          const ts = new Date(ev.metadata.event_timestamp).toLocaleTimeString();
+
+          tr.innerHTML = `
+            <td><code>${ts}</code></td>
+            <td><span class="pill pill-cyan">${ev.metadata.event_type}</span></td>
+            <td><code>${ev.principal?.hostname || 'N/A'}</code> (${ev.principal?.ip || 'N/A'})</td>
+            <td><code>${ev.principal?.user?.userid || 'N/A'}</code></td>
+            <td><code>${ev.target?.hostname || 'N/A'}</code></td>
+            <td><code>${ev.network?.ip_protocol}/${ev.network?.direction}</code></td>
+            <td>${secPill}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch(e) { console.error('Error fetching telemetry:', e); }
+    }
+
+    async function fetchThreatIntelDashboard() {
+      try {
+        const resp = await fetch('/api/v2/dashboard/threat_intel');
+        const data = await resp.json();
+        cachedAdvisories = data.security_advisories;
+        
+        // Render Card A: Daily Disclosed CVEs
+        const cveTbody = document.getElementById('cve-table-body');
+        cveTbody.innerHTML = '';
+
+        data.daily_cves.forEach(c => {
+          const tr = document.createElement('tr');
+          const statusPill = c.exploit_status === 'ACTIVE_IN_WILD'
+            ? '<span class="pill pill-red">ACTIVE IN WILD</span>'
+            : '<span class="pill pill-yellow">POC PUBLIC</span>';
+
+          const cveLink = c.link || c.url || `https://nvd.nist.gov/vuln/detail/${c.cve_id}`;
+
+          tr.innerHTML = `
+            <td><a href="${cveLink}" target="_blank" rel="noopener noreferrer" style="color:#06b6d4; font-weight:600; text-decoration:underline;">${c.cve_id}</a></td>
+            <td><strong>${c.vendor_project}</strong></td>
+            <td><code>${c.product}</code> — ${c.vulnerability_name}</td>
+            <td><strong style="color:#ef4444;">${c.cvss_score}</strong></td>
+            <td>${statusPill}</td>
+            <td><code>${c.date_added}</code></td>
+            <td><span style="font-size:0.8rem; color:#94a3b8;">${c.required_action}</span></td>
+          `;
+          cveTbody.appendChild(tr);
+        });
+
+        // Render Card B: Live Security Advisories
+        const advisoryContainer = document.getElementById('advisory-grid-container');
+        advisoryContainer.innerHTML = '';
+
+        data.security_advisories.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'advisory-item';
+
+          const srcPill = item.source.includes('CISA') 
+            ? '<span class="pill pill-purple">CISA</span>'
+            : (item.source.includes('GBHackers') ? '<span class="pill pill-cyan">GBHackers</span>' : '<span class="pill pill-yellow">The Hacker News</span>');
+
+          const pubTime = new Date(item.published_at).toLocaleTimeString();
+          const cleanTitle = (item.title || '').replace(/'/g, "\\'");
+          const cleanSummary = (item.summary || '').replace(/'/g, "\\'");
+          const cleanSource = (item.source || '').replace(/'/g, "\\'");
+
+          card.innerHTML = `
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                ${srcPill}
+                <span style="font-size:0.75rem; color:#94a3b8; font-family:'JetBrains Mono', monospace;">${pubTime}</span>
+              </div>
+              <div class="advisory-title">${item.title}</div>
+              <div class="advisory-summary" style="margin-top:0.5rem;">${item.summary}</div>
+            </div>
+            <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+              <a href="${item.link || item.url || 'https://thehackernews.com'}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline cursor-pointer">Read Full Advisory &rarr;</a>
+              <button onclick="openAdvisoryModal('${cleanTitle}', '${cleanSummary}', '${cleanSource}')" class="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-600 cursor-pointer">🔍 View Details</button>
+            </div>
+          `;
+          advisoryContainer.appendChild(card);
+        });
+
+        document.getElementById('intel-refresh-badge').textContent = `Last Updated: ${new Date(data.last_updated).toLocaleTimeString()}`;
+      } catch(e) { console.error('Error fetching threat intel:', e); }
+    }
+
+    // --- MODAL FUNCTIONS ---
+    function openAdvisoryModal(title, summary, source) {
+      if (typeof title === 'string' && !summary && !source) {
+        const adv = cachedAdvisories.find(a => a.id === title || a.title === title);
+        if (adv) {
+          title = adv.title;
+          summary = adv.summary;
+          source = adv.source;
+        }
+      }
+
+      document.getElementById('modal-title').textContent = title || 'Security Advisory Details';
+      document.getElementById('modal-source').textContent = source || 'Security Threat Intel';
+      document.getElementById('modal-summary').textContent = summary || 'No details provided.';
+      document.getElementById('modal-category').textContent = 'SECURITY_ADVISORY';
+      document.getElementById('modal-mitigation').textContent = 'Inspect security logs and apply latest security patches immediately.';
+      
+      let linkUrl = 'https://thehackernews.com';
+      if (source && source.includes('CISA')) {
+        linkUrl = 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog';
+      } else if (source && source.includes('GBHackers')) {
+        linkUrl = 'https://gbhackers.com/';
+      }
+      
+      const linkEl = document.getElementById('modal-external-link');
+      if (linkEl) linkEl.href = linkUrl;
+
+      document.getElementById('advisory-modal').style.display = 'flex';
+    }
+
+    function closeAdvisoryModal() {
+      document.getElementById('advisory-modal').style.display = 'none';
+    }
+
+    // --- CONTINUOUS AUTO-REFRESH POLLING (EVERY 12s) ---
+    setInterval(() => {
+      if (activeTab === 'telemetry') fetchTelemetryDashboard();
+      if (activeTab === 'alerts') fetchAlertsDashboard();
+      if (activeTab === 'intel') fetchThreatIntelDashboard();
+    }, 12000);
+  </script>
+</body>
+</html>

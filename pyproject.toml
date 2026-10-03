@@ -1,0 +1,22 @@
+[project]
+name = "secops-efficiency-suite-v2"
+version = "0.2.0"
+description = "Google SecOps AI Efficiency Suite V2 with real-time EPSS API, UDM schemas, and ADK Agent"
+requires-python = ">=3.11"
+
+dependencies = [
+    "google-adk>=2.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.8.0",
+    "google-genai>=1.0.0",
+    "google-cloud-firestore>=2.19.0",
+    "google-cloud-storage>=2.18.0",
+    "pillow>=10.0.0",
+    "a2a-sdk[http-server]~=0.3.22"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
